@@ -83,16 +83,14 @@ void DaikinMadoka::control(const ClimateCall &call) {
     }
     this->query_(CMD_SET_SETTING_STATUS, std::vector<uint8_t>{0x20, 0x01, (uint8_t) status_out}, 200);
   }
+
   std::vector<uint8_t> temp_setpoint_args;
-  auto target_temperature_high_opt = call.get_target_temperature_high();
-  if (target_temperature_high_opt.has_value()) {
-    uint16_t target_high = target_temperature_high_opt.value() * 128;
+  auto target_temperature = call.get_target_temperature();
+  if (target_temperature.has_value()) {
+    uint16_t target_low = target_temperature.value() * 128;
+    uint16_t target_high = target_temperature.value() * 128;
     temp_setpoint_args.insert(temp_setpoint_args.end(),
                               {0x20, 0x02, (uint8_t) ((target_high >> 8) & 0xFF), (uint8_t) (target_high & 0xFF)});
-  }
-  auto target_temperature_low_opt = call.get_target_temperature_low();
-  if (target_temperature_low_opt.has_value()) {
-    uint16_t target_low = target_temperature_low_opt.value() * 128;
     temp_setpoint_args.insert(temp_setpoint_args.end(),
                               {0x21, 0x02, (uint8_t) ((target_low >> 8) & 0xFF), (uint8_t) (target_low & 0xFF)});
   }
@@ -153,6 +151,9 @@ void DaikinMadoka::gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_c
 
       auto status = esp_ble_gattc_register_for_notify(this->parent_->get_gattc_if(), this->parent_->get_remote_bda(),
                                                       nfy->handle);
+
+      this->should_update_ = true;
+
       if (status) {
         ESP_LOGW(TAG, "[%s] esp_ble_gattc_register_for_notify failed, status=%d", this->get_name().c_str(), status);
       }
@@ -353,8 +354,6 @@ void DaikinMadoka::parse_cb_(std::vector<uint8_t> msg) {
             this->mode = climate::CLIMATE_MODE_DRY;
             break;
           case 2:
-            this->mode = climate::CLIMATE_MODE_HEAT_COOL;
-            break;
           case 3:
             this->mode = climate::CLIMATE_MODE_COOL;
             break;
@@ -378,7 +377,7 @@ void DaikinMadoka::parse_cb_(std::vector<uint8_t> msg) {
           }
           case 0x21: {
             std::vector<uint8_t> val(msg.begin() + i, msg.begin() + i + len);
-            this->target_temperature_low = (float) (val[0] << 8 | val[1]) / 128;
+            this->target_temperature = (float) (val[0] << 8 | val[1]) / 128;
             break;
           }
         }
