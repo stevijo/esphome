@@ -53,6 +53,7 @@ class DaikinMadoka : public climate::Climate, public esphome::ble_client::BLECli
   bool should_update_ = false;
   std::queue<std::vector<uint8_t>> received_chunks_ = {};
   std::map<uint8_t, std::vector<uint8_t>> pending_chunks_ = {};
+  bool should_clear_chunks_ = false;
   uint16_t notify_handle_;
   uint16_t wwr_handle_;
   SemaphoreHandle_t receive_semaphore_ = nullptr;

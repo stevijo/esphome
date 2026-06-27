@@ -212,6 +212,12 @@ void DaikinMadoka::update() {
   ESP_LOGD(TAG, "Got update request...");
   if (this->node_state != espbt::ClientState::ESTABLISHED) {
     ESP_LOGD(TAG, "...but device is disconnected");
+    this->pending_chunks_.clear();
+    return;
+  }
+
+  if (!this->pending_chunks_.empty()) {
+    ESP_LOGW(TAG, "Pending chunks buffer is not empty, skipping update round.");
     return;
   }
 
